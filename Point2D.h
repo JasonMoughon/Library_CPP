@@ -35,6 +35,10 @@ public:
 		if (X == refPoint.X && Y == refPoint.Y) return true;
 		return false;
 	}
+	std::string ToString()
+	{
+		return "{X: " + std::to_string(X) + ", Y: " + std::to_string(Y) + "}";
+	}
 };
 
 bool operator==(const Point2D& p1, const Point2D& p2)
