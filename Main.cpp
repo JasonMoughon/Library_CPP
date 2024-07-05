@@ -26,8 +26,7 @@ int main()
 	SeedQuad(&MyQuad, &FirstRound);
 	std::cout << MyQuad.ToString() + "\n\n";
 	EmptyQuad(&MyQuad, &FirstRound);
-	//MyQuad.CleanUp();
-	//std::cout << MyQuad.ToString() + "\n\n";
+	std::cout << MyQuad.ToString() + "\n\n";
 
 	return 0;
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 
 //2-Dimensional point on a plane
 class Point2D
