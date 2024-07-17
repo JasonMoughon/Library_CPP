@@ -42,6 +42,11 @@ public:
 		//if (_itemList != NULL) delete _itemList;
 	}
 
+	Point2D GetSize()
+	{
+		return Point2D(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y);
+	}
+
 	void Insert(int id, Point2D position)
 	{
 		//Make sure within bounds of Parent Quad

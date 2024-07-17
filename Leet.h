@@ -12,7 +12,7 @@ public:
         for (int i = 0; i < nums.size(); i++)
         {
             int result = target - nums[i];
-            if (hashMap.contains(result)) return { hashMap[result], i };
+            //if (hashMap.contains(result)) return { hashMap[result], i };
 
             hashMap[nums[i]] = i;
         }
