@@ -2,7 +2,7 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #define NULL 0
-#define CIRCLE_RADIUS 2.0f
+#define CIRCLE_RADIUS 4.0f
 
 //2-Dimensional point on a plane
 class Point2D

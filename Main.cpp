@@ -3,100 +3,90 @@
 #include <SFML/Graphics.hpp>
 #include "Quad.h"
 #include "Point2D.h"
-#include "GlobalPositions.h"
+#include "GameObject.h"
 #include "GameData.h"
+#define SPEED 10.0f
 #define DELTA_TIME 0.166
 
-void SeedQuad(GameData* d, std::vector<std::pair<int, Point2D>>* a)
+void SeedQuad(GameData<GameObject>* d, std::vector<std::pair<int, Point2D>>* a)
 {
 	if (d == NULL || a == NULL) return;
 	//Insert all desired values into the quad
 	for (int i = 0; i < a->size(); i++)
 	{
-		d->GameSpace.Insert(a->at(i).first, a->at(i).second);
-		d->GamePositions.AddPoint(a->at(i).second);
+		d->Space2D.Insert(GameObject(a->at(i).first, a->at(i).second, sf::Vector2f(SPEED, SPEED)));
 	}
 }
 
-void EmptyQuad(GameData* d, std::vector<std::pair<int, Point2D>>* a)
+void EmptyQuad(GameData<GameObject>* d, std::vector<std::pair<int, Point2D>>* a)
 {
 	if (d == NULL || a == NULL) return;
 	//Delete all desired values from the quad
 	for (int i = 0; i < a->size(); i++)
 	{
-		d->GameSpace.Delete(a->at(i).first, a->at(i).second);
-		d->GamePositions.DeletePoint(i);
+		d->Space2D.Delete(GameObject(a->at(i).first, a->at(i).second, sf::Vector2f(SPEED, SPEED)));
 	}
 }
 
-void UpdatePosition(int i, GameData* d)
+void UpdatePosition(int i, GameData<GameObject>* d)
 {
 	bool isColliding = false;
-	Point2D newPosition = d->GamePositions.GetPosition(i);
-	sf::Vector2f newVelocity = d->GamePositions.GetVelocity(i);
+	GameObject newPosition = d->Space2D.Find(i);
+	//sf::Vector2f newVelocity = d->GamePositions.GetVelocity(i);
 	
 	//Delete from Quad
-	d->GameSpace.Delete(i, newPosition);
+	d->Space2D.Delete(newPosition);
 
 	//Calculate new position
-	newPosition.X += d->GamePositions.GetVelocity(i).x * DELTA_TIME;
-	newPosition.Y += d->GamePositions.GetVelocity(i).y * DELTA_TIME;
+	newPosition.SetPosition(Point2D(
+		newPosition.GetPosition().X + newPosition.GetVelocity().x * DELTA_TIME ,
+		newPosition.GetPosition().Y + newPosition.GetVelocity().y * DELTA_TIME));
 
 	//Check for collision
-	if (newPosition.Y + newPosition.CircleBounds.getRadius() >= d->GameSpace.GetBottomRight().Y)
+	if (newPosition.GetPosition().Y + newPosition.GetPosition().CircleBounds.getRadius() >= d->Space2D.GetBottomRight().Y)
 	{
 		//Collided with bottom of quad
 		isColliding = true;
-		newVelocity.y = -newVelocity.y;
-		d->GamePositions.SetVelocity(i, newVelocity);
+		newPosition.SetVelocity(sf::Vector2f(newPosition.GetVelocity().x, -newPosition.GetVelocity().y));
 	}
-	if (newPosition.Y - newPosition.CircleBounds.getRadius() <= d->GameSpace.GetTopLeft().Y)
+	if (newPosition.GetPosition().Y - newPosition.GetPosition().CircleBounds.getRadius() <= d->Space2D.GetTopLeft().Y)
 	{
 		//Collided with top of quad
 		isColliding = true;
-		newVelocity.y = -newVelocity.y;
-		d->GamePositions.SetVelocity(i, newVelocity);
+		newPosition.SetVelocity(sf::Vector2f(newPosition.GetVelocity().x, -newPosition.GetVelocity().y));
 	}
-	if (newPosition.X + newPosition.CircleBounds.getRadius() >= d->GameSpace.GetBottomRight().X)
+	if (newPosition.GetPosition().X + newPosition.GetPosition().CircleBounds.getRadius() >= d->Space2D.GetBottomRight().X)
 	{
 		//Collided with right of quad
 		isColliding = true;
-		newVelocity.x = -newVelocity.x;
-		d->GamePositions.SetVelocity(i, newVelocity);
+		newPosition.SetVelocity(sf::Vector2f(-newPosition.GetVelocity().x, newPosition.GetVelocity().y));
 	}
-	if (newPosition.X - newPosition.CircleBounds.getRadius() <= d->GameSpace.GetTopLeft().X)
+	if (newPosition.GetPosition().X - newPosition.GetPosition().CircleBounds.getRadius() <= d->Space2D.GetTopLeft().X)
 	{
 		//Collided with left of quad
 		isColliding = true;
-		newVelocity.x = -newVelocity.x;
-		d->GamePositions.SetVelocity(i, newVelocity);
-	}
-
-	//Rewrite position
-	if (!isColliding)
-	{
-		d->GamePositions.SetPosition(i, newPosition);
+		newPosition.SetVelocity(sf::Vector2f(-newPosition.GetVelocity().x, newPosition.GetVelocity().y));
 	}
 
 	//Insert new position into quad
-	d->GameSpace.Insert(i, newPosition);
+	d->Space2D.Insert(newPosition);
 }
 
-int SFML(GameData* d)
+void SFML(GameData<GameObject>* d, std::vector<std::pair<int, Point2D>> v)
 {
-	sf::RenderWindow window(sf::VideoMode((int)d->GameSpace.GetSize().X + 5, (int)d->GameSpace.GetSize().Y + 5), "Quad Demo");
+	sf::RenderWindow window(sf::VideoMode((int)d->Space2D.GetSize().X + 5, (int)d->Space2D.GetSize().Y + 5), "Quad Demo");
 
 	while (window.isOpen())
 	{
 		//Update Assets
-		for (int i = 0; i < d->GamePositions.Size(); i++)
+		for (int i = 0; i < v.size(); i++)
 		{
 			UpdatePosition(i, d);
 		}
 
 		//Draw Stuff
 		window.clear();
-		d->GameSpace.Draw(&window);
+		d->Space2D.Draw(&window);
 		window.display();
 
 
@@ -108,8 +98,6 @@ int SFML(GameData* d)
 				window.close();
 		}
 	}
-
-	return 0;
 }
 
 int main()
@@ -118,12 +106,11 @@ int main()
 													   ,{5, Point2D(300,300)},{6, Point2D(100,300)},{7, Point2D(900,100)},{8, Point2D(800,700)},{9, Point2D(500,900)}
 													   ,{10, Point2D(500,300)},{11, Point2D(800,100)},{12, Point2D(900,300)},{13, Point2D(200,200)},{14, Point2D(600,400)}
 													   ,{15, Point2D(627, 444)},{16, Point2D(555,555)},{17, Point2D(10, 4)},{18, Point2D(10, 900)}, {19, Point2D(900, 10)} };
-	GameData Data = GameData(Point2D(0, 0), Point2D(1000, 1000));
+	
+	GameData<GameObject> Data = GameData<GameObject>(Point2D(0, 0), Point2D(1000, 1000));
 	SeedQuad(&Data, &FirstRound);
-	std::cout << Data.GameSpace.ToString() + "\n\n";
 
-	return SFML(&Data);
+	SFML(&Data, FirstRound);
 
-	EmptyQuad(&Data, &FirstRound);
-	std::cout << Data.GameSpace.ToString() + "\n\n";
+	return 0;
 }

@@ -1,20 +1,21 @@
 #pragma once
 #include "Quad.h"
-#include "GlobalPositions.h"
 
+template <typename T>
 struct GameData
 {
+	static_assert(std::is_base_of<IMoveable, T>::value, "T must implement IMoveable");
 /// <summary>
 /// Structure for all common game data passed between functions in MAIN.CPP
 /// </summary>
 public:
-	Quad GameSpace;
+	Quad<T> Space2D;
 
 	GameData()
-		: GameSpace(Quad())
+		: Space2D(Quad<T>())
 	{}
 
 	GameData(Point2D topLeft, Point2D bottomRight)
-		: GameSpace(Quad(topLeft, bottomRight))
+		: Space2D(Quad<T>(topLeft, bottomRight))
 	{}
 };

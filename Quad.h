@@ -9,7 +9,8 @@
 #include "Point2D.h"
 #include "IMoveable.h"
 #define NULL 0
-#define OUTLINE_THICKNESS 4
+#define OUTLINE_THICKNESS 2
+#define ID_UNDEFINED -1
 
 template <typename T>
 class Quad
@@ -28,7 +29,7 @@ public:
 		_rectangleBounds = sf::RectangleShape(sf::Vector2f(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y));
 		_rectangleBounds.setFillColor(sf::Color::Transparent);
 		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
-		_rectangleBounds.setOutlineThickness(5);
+		_rectangleBounds.setOutlineThickness(OUTLINE_THICKNESS);
 	};
 
 	Quad(Point2D topLeft, Point2D bottomRight)
@@ -59,146 +60,174 @@ public:
 		return Point2D(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y);
 	}
 
-	void Insert(int id, Point2D position)
+	void Insert(T val)
 	{
 		//Make sure within bounds of Parent Quad
-		if (!WithinBounds(position)) { return; }
+		if (!WithinBounds(val.GetPosition())) { return; }
 
 		//Insert into ItemList if ID does not exist in list already
 		if (_itemList->size() < 4 && !_hasChild)
 		{
-			if (std::find(_itemList->begin(), _itemList->end(), std::pair<int, Point2D>(id, position)) != _itemList->end()) return;
-			_itemList->insert(_itemList->end(), std::pair<int, Point2D>(id, position));
+			if (std::find(_itemList->begin(), _itemList->end(), val) != _itemList->end()) return;
+			_itemList->insert(_itemList->end(), val);
 		}
 		else
 		{
 			//Push values to _itemList in respective Quad
-			for (int i = 0; i < _itemList->size(); i++) InsertIntoChild(_itemList->at(i).first, _itemList->at(i).second);
+			for (int i = 0; i < _itemList->size(); i++) InsertIntoChild(_itemList->at(i));
 			_itemList->clear();
 
-			InsertIntoChild(id, position);
+			InsertIntoChild(val);
 		}
 	}
 
-	bool Contains(int id, Point2D position)
-	{
-		if (_hasChild) 
-		{
-			if (position.X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
-			{
-				//Indicates Quad 1
-				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
-				{
-					return TopRightNode->Contains(id, position);
-				}
-				//Indicates Quad 4
-				else
-				{
-					return BottomRightNode->Contains(id, position);
-				}
-			}
-			else
-			{
-				//Indicates Quad 2
-				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
-				{
-					return TopLeftNode->Contains(id, position);
-				}
-				//Indicates Quad 3
-				else
-				{
-					return BottomLeftNode->Contains(id, position);
-				}
-			}
-		}
-		else
-		{
-			return (std::find(_itemList->begin(), _itemList->end(), std::pair<int, Point2D>(id, position)) != _itemList->end());
-		}
-	}
-
-	void Delete(int id, Point2D position)
+	T Find(int id)
 	{
 		if (_hasChild)
 		{
-			if (position.X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
+			T result;
+			if (TopRightNode != NULL) result = TopRightNode->Find(id);
+			if (result.ID != ID_UNDEFINED) return result;
+
+			if (TopLeftNode != NULL) result = TopLeftNode->Find(id);
+			if (result.ID != ID_UNDEFINED) return result;
+
+			if (BottomLeftNode != NULL) result = BottomLeftNode->Find(id);
+			if (result.ID != ID_UNDEFINED) return result;
+
+			if (BottomRightNode != NULL) result = BottomRightNode->Find(id);
+			if (result.ID != ID_UNDEFINED) return result;
+		}
+		else
+		{
+			for (int i = 0; i < _itemList->size(); i++)
+			{
+				T currentItem = _itemList->at(i);
+				if (currentItem.ID == id) return currentItem;
+			}
+		}
+		return T();
+	}
+
+	bool Contains(T val)
+	{
+		if (_hasChild) 
+		{
+			if (val.GetPosition().X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
 			{
 				//Indicates Quad 1
-				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 				{
-					TopRightNode->Delete(id, position);
+					return TopRightNode->Contains(val);
 				}
 				//Indicates Quad 4
 				else
 				{
-					BottomRightNode->Delete(id, position);
+					return BottomRightNode->Contains(val);
 				}
 			}
 			else
 			{
 				//Indicates Quad 2
-				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 				{
-					TopLeftNode->Delete(id, position);
+					return TopLeftNode->Contains(val);
 				}
 				//Indicates Quad 3
 				else
 				{
-					BottomLeftNode->Delete(id, position);
+					return BottomLeftNode->Contains(val);
 				}
 			}
 		}
 		else
 		{
-			auto it = std::find(_itemList->begin(), _itemList->end(),
-				std::pair<int, Point2D>(id, position));
+			return (std::find(_itemList->begin(), _itemList->end(), val) != _itemList->end());
+		}
+	}
 
-			// If element is found found, erase it 
+	void Delete(T val)
+	{
+		if (_hasChild)
+		{
+			if (val.GetPosition().X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
+			{
+				//Indicates Quad 1
+				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				{
+					TopRightNode->Delete(val);
+					CleanUp();
+				}
+				//Indicates Quad 4
+				else
+				{
+					BottomRightNode->Delete(val);
+					CleanUp();
+				}
+			}
+			else
+			{
+				//Indicates Quad 2
+				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				{
+					TopLeftNode->Delete(val);
+					CleanUp();
+				}
+				//Indicates Quad 3
+				else
+				{
+					BottomLeftNode->Delete(val);
+					CleanUp();
+				}
+			}
+		}
+		else
+		{
+			auto it = std::find(_itemList->begin(), _itemList->end(), val);
+
+			// If element is found, erase it 
 			if (it != _itemList->end()) 
 			{
 				_itemList->erase(it);
-				CleanUp();
 			}
 		}
-		//Clean up object
-		//CleanUp();
 	}
 
-	const std::vector<std::pair<int, Point2D>>* GetItems(int id, Point2D position)
+	const std::vector<T>* GetItems(T val)
 	{
 		if (_hasChild)
 		{
 			//Indicates Top Right or Quadrant 1
-			if (position.X > (_bottomRight.X - _topLeft.X) / 2 && position.Y <= (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().X > (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y <= (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return TopRightNode->GetItems(id, position);
+				return TopRightNode->GetItems(val);
 			}
 
 			//Indicates Top Left or Quadrant 2
-			if (position.X <= (_bottomRight.X - _topLeft.X) / 2 && position.Y < (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().X <= (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y < (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return TopLeftNode->GetItems(id, position);
+				return TopLeftNode->GetItems(val);
 			}
 
 			//Indicates Bottom Left or Quadrant 3
-			if (position.X < (_bottomRight.X - _topLeft.X) / 2 && position.Y >= (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().X < (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y >= (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return BottomLeftNode->GetItems(id, position);
+				return BottomLeftNode->GetItems(val);
 			}
 
 			//Indicates Bottom Right or Quadrant 4
-			if (position.X >= (_bottomRight.X - _topLeft.X) / 2 && position.Y > (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().X >= (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y > (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return BottomRightNode->GetItems(id, position);
+				return BottomRightNode->GetItems(val);
 			}
 		}
 		else
 		{
-			if (std::find(_itemList->begin(), _itemList->end(), std::pair<int, Point2D>(id, position)) != _itemList->end()) return _itemList;
+			if (std::find(_itemList->begin(), _itemList->end(), val) != _itemList->end()) return _itemList;
 		}
 
 		//Return Empty Map if ID is not found
-		return new std::vector<std::pair<int, Point2D>>();
+		return new std::vector<T>();
 	}
 
 	void Draw(sf::RenderWindow* w)
@@ -213,7 +242,7 @@ public:
 			for (int i = 0; i < _itemList->size(); i++)
 			{
 				//Pass RenderWindow to all Points to Draw
-				_itemList->at(i).second.Draw(w);
+				_itemList->at(i).GetPosition().Draw(w);
 			}
 		}
 
@@ -233,6 +262,7 @@ public:
 			{
 				if (TopLeftNode->_itemList->size() == 0 && !TopLeftNode->_hasChild)
 				{
+					delete TopLeftNode->_itemList;
 					delete TopLeftNode;
 					TopLeftNode = NULL;
 					emptyCount += 1;
@@ -243,6 +273,7 @@ public:
 			{
 				if (TopRightNode->_itemList->size() == 0 && !TopRightNode->_hasChild)
 				{
+					delete TopRightNode->_itemList;
 					delete TopRightNode;
 					TopRightNode = NULL;
 					emptyCount += 1;
@@ -253,6 +284,7 @@ public:
 			{
 				if (BottomLeftNode->_itemList->size() == 0 && !BottomLeftNode->_hasChild)
 				{
+					delete BottomLeftNode->_itemList;
 					delete BottomLeftNode;
 					BottomLeftNode = NULL;
 					emptyCount += 1;
@@ -263,6 +295,7 @@ public:
 			{
 				if (BottomRightNode->_itemList->size() == 0 && !BottomRightNode->_hasChild)
 				{
+					delete BottomRightNode->_itemList;
 					delete BottomRightNode;
 					BottomRightNode = NULL;
 					emptyCount += 1;
@@ -316,7 +349,7 @@ public:
 private:
 	Point2D _topLeft;
 	Point2D _bottomRight;
-	std::vector<std::pair<int, Point2D>>* _itemList = new std::vector<std::pair<int, Point2D>>();
+	std::vector<T>* _itemList = new std::vector<T>();
 	sf::RectangleShape _rectangleBounds;
 	bool _hasChild = false;
 
@@ -342,19 +375,19 @@ private:
 
 	}
 	
-	void InsertIntoChild(int id, Point2D position)
+	void InsertIntoChild(T val)
 	{
-		if (position.X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
+		if (val.GetPosition().X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
 		{
 			//Indicates Quad 1
-			if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 			{
 				if (TopRightNode == NULL)
 				{
 					_hasChild = true;
 					TopRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y), Point2D(_bottomRight.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2));
 				}
-				TopRightNode->Insert(id, position);
+				TopRightNode->Insert(val);
 			}
 			//Indicates Quad 4
 			else
@@ -364,20 +397,20 @@ private:
 					_hasChild = true;
 					BottomRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _bottomRight);
 				}
-				BottomRightNode->Insert(id, position);
+				BottomRightNode->Insert(val);
 			}
 		}
 		else
 		{
 			//Indicates Quad 2
-			if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+			if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 			{
 				if (TopLeftNode == NULL)
 				{
 					_hasChild = true;
 					TopLeftNode = new Quad(_topLeft, Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2));
 				}
-				TopLeftNode->Insert(id, position);
+				TopLeftNode->Insert(val);
 			}
 			//Indicates Quad 3
 			else
@@ -387,7 +420,7 @@ private:
 					_hasChild = true;
 					BottomLeftNode = new Quad(Point2D(_topLeft.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _bottomRight.Y));
 				}
-				BottomLeftNode->Insert(id, position);
+				BottomLeftNode->Insert(val);
 			}
 		}
 	}
