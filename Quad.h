@@ -4,11 +4,17 @@
 #include <map>
 #include <string>
 #include <Windows.h>
+#include <SFML/Graphics.hpp>
+#include <type_traits>
 #include "Point2D.h"
+#include "IMoveable.h"
 #define NULL 0
+#define OUTLINE_THICKNESS 4
 
+template <typename T>
 class Quad
 {
+	static_assert(std::is_base_of<IMoveable, T>::value, "T must implement IMoveable");
 public:
 	Quad* TopLeftNode = NULL;
 	Quad* TopRightNode = NULL;
@@ -18,7 +24,12 @@ public:
 	Quad()
 		: _topLeft(0, 0)
 		, _bottomRight(0, 0)
-	{};
+	{
+		_rectangleBounds = sf::RectangleShape(sf::Vector2f(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y));
+		_rectangleBounds.setFillColor(sf::Color::Transparent);
+		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
+		_rectangleBounds.setOutlineThickness(5);
+	};
 
 	Quad(Point2D topLeft, Point2D bottomRight)
 		: _topLeft(topLeft.X, topLeft.Y)
@@ -30,16 +41,17 @@ public:
 			(_topLeft.X, _topLeft.Y) = (float)(0, 0);
 			(_bottomRight.X, _bottomRight.Y) = (float)(0, 0);
 		}
+
+		_rectangleBounds = sf::RectangleShape(sf::Vector2f(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y));
+		_rectangleBounds.setFillColor(sf::Color::Transparent);
+		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
+		_rectangleBounds.setOutlineThickness(OUTLINE_THICKNESS);
+		_rectangleBounds.setPosition(sf::Vector2f(_topLeft.X, _topLeft.Y));
 	};
 
 	~Quad()
 	{
 		delete TopLeftNode, TopRightNode, BottomRightNode, BottomLeftNode, _itemList;
-		//if (TopLeftNode != NULL) delete TopLeftNode;
-		//if (TopRightNode != NULL) delete TopRightNode;
-		//if (BottomLeftNode != NULL) delete BottomLeftNode;
-		//if (BottomRightNode != NULL) delete BottomRightNode;
-		//if (_itemList != NULL) delete _itemList;
 	}
 
 	Point2D GetSize()
@@ -145,10 +157,11 @@ public:
 			if (it != _itemList->end()) 
 			{
 				_itemList->erase(it);
+				CleanUp();
 			}
 		}
 		//Clean up object
-		CleanUp();
+		//CleanUp();
 	}
 
 	const std::vector<std::pair<int, Point2D>>* GetItems(int id, Point2D position)
@@ -188,60 +201,26 @@ public:
 		return new std::vector<std::pair<int, Point2D>>();
 	}
 
-	std::string ToString()
+	void Draw(sf::RenderWindow* w)
 	{
-		std::string message = "--Top Left: (" + std::to_string(_topLeft.X) + "," + std::to_string(_topLeft.Y) + "), Bottom Right: (" + std::to_string(_bottomRight.X) + "," + std::to_string(_bottomRight.Y) + ") " + StringifyChildren() + "\n";
-		//Quadrant 1
-		if (TopRightNode != NULL) { message += "--" + TopRightNode->ToStringAddPrefix("--"); }
-		//Quadrant 2
-		if (TopLeftNode != NULL) { message += "--" + TopLeftNode->ToStringAddPrefix("--"); }
-		//Quadrant 3
-		if (BottomLeftNode != NULL) { message += "--" + BottomLeftNode->ToStringAddPrefix("--"); }
-		//Quadrant 4
-		if (BottomRightNode != NULL) { message += "--" + BottomRightNode->ToStringAddPrefix("--"); }
+		//Do nothing if passed NULL pointer
+		if (w == NULL) return;
 
-		return message;
-	}
+		w->draw(_rectangleBounds);
 
-	bool operator==(Quad* q)
-	{
-		//Do not compare NULL pointer
-		if (q == NULL) return false;
-		
-		//Check dimensions
-		if (_topLeft.Equals(q->_topLeft) && _bottomRight.Equals(q->_bottomRight))
+		if (_itemList->size() > 0)
 		{
-			if (!RecurseQuads(q)) return false;
+			for (int i = 0; i < _itemList->size(); i++)
+			{
+				//Pass RenderWindow to all Points to Draw
+				_itemList->at(i).second.Draw(w);
+			}
 		}
-		return true;
-	}
 
-private:
-	Point2D _topLeft;
-	Point2D _bottomRight;
-	std::vector<std::pair<int, Point2D>>* _itemList = new std::vector<std::pair<int, Point2D>>();
-	bool _hasChild = false;
-
-	std::string StringifyChildren()
-	{
-		if (_hasChild) return "Has Children.";
-		else return "Has " + std::to_string(_itemList->size()) + " Items.";
-	}
-
-	std::string ToStringAddPrefix(std::string prefix)
-	{
-		std::string message = prefix + "Top Left: (" + std::to_string(_topLeft.X) + "," + std::to_string(_topLeft.Y) + "), Bottom Right: (" + std::to_string(_bottomRight.X) + "," + std::to_string(_bottomRight.Y) + ") " + StringifyChildren() + "\n";
-		//Quadrant 1
-		if (TopRightNode != NULL) { message += prefix + "--" + TopRightNode->ToStringAddPrefix("--"); }
-		//Quadrant 2
-		if (TopLeftNode != NULL) { message += prefix + "--" + TopLeftNode->ToStringAddPrefix("--"); }
-		//Quadrant 3
-		if (BottomLeftNode != NULL) { message += prefix + "--" + BottomLeftNode->ToStringAddPrefix("--"); }
-		//Quadrant 4
-		if (BottomRightNode != NULL) { message += prefix + "--" + BottomRightNode->ToStringAddPrefix("--"); }
-
-		return message;
-
+		if (TopRightNode != NULL) TopRightNode->Draw(w);
+		if (TopLeftNode != NULL) TopLeftNode->Draw(w);
+		if (BottomLeftNode != NULL) BottomLeftNode->Draw(w);
+		if (BottomRightNode != NULL) BottomRightNode->Draw(w);
 	}
 
 	void CleanUp()
@@ -295,6 +274,73 @@ private:
 			if (emptyCount >= 4) _hasChild = false;
 		}
 	}
+
+	Point2D GetBottomRight()
+	{
+		return _bottomRight;
+	}
+
+	Point2D GetTopLeft()
+	{
+		return _topLeft;
+	}
+
+	std::string ToString()
+	{
+		std::string message = "--Top Left: (" + std::to_string(_topLeft.X) + "," + std::to_string(_topLeft.Y) + "), Bottom Right: (" + std::to_string(_bottomRight.X) + "," + std::to_string(_bottomRight.Y) + ") " + StringifyChildren() + "\n";
+		//Quadrant 1
+		if (TopRightNode != NULL) { message += "--" + TopRightNode->ToStringAddPrefix("--"); }
+		//Quadrant 2
+		if (TopLeftNode != NULL) { message += "--" + TopLeftNode->ToStringAddPrefix("--"); }
+		//Quadrant 3
+		if (BottomLeftNode != NULL) { message += "--" + BottomLeftNode->ToStringAddPrefix("--"); }
+		//Quadrant 4
+		if (BottomRightNode != NULL) { message += "--" + BottomRightNode->ToStringAddPrefix("--"); }
+
+		return message;
+	}
+
+	bool operator==(Quad* q)
+	{
+		//Do not compare NULL pointer
+		if (q == NULL) return false;
+		
+		//Check dimensions
+		if (_topLeft.Equals(q->_topLeft) && _bottomRight.Equals(q->_bottomRight))
+		{
+			if (!RecurseQuads(q)) return false;
+		}
+		return true;
+	}
+
+private:
+	Point2D _topLeft;
+	Point2D _bottomRight;
+	std::vector<std::pair<int, Point2D>>* _itemList = new std::vector<std::pair<int, Point2D>>();
+	sf::RectangleShape _rectangleBounds;
+	bool _hasChild = false;
+
+	std::string StringifyChildren()
+	{
+		if (_hasChild) return "Has Children.";
+		else return "Has " + std::to_string(_itemList->size()) + " Items.";
+	}
+
+	std::string ToStringAddPrefix(std::string prefix)
+	{
+		std::string message = prefix + "Top Left: (" + std::to_string(_topLeft.X) + "," + std::to_string(_topLeft.Y) + "), Bottom Right: (" + std::to_string(_bottomRight.X) + "," + std::to_string(_bottomRight.Y) + ") " + StringifyChildren() + "\n";
+		//Quadrant 1
+		if (TopRightNode != NULL) { message += prefix + "--" + TopRightNode->ToStringAddPrefix("--"); }
+		//Quadrant 2
+		if (TopLeftNode != NULL) { message += prefix + "--" + TopLeftNode->ToStringAddPrefix("--"); }
+		//Quadrant 3
+		if (BottomLeftNode != NULL) { message += prefix + "--" + BottomLeftNode->ToStringAddPrefix("--"); }
+		//Quadrant 4
+		if (BottomRightNode != NULL) { message += prefix + "--" + BottomRightNode->ToStringAddPrefix("--"); }
+
+		return message;
+
+	}
 	
 	void InsertIntoChild(int id, Point2D position)
 	{
@@ -315,7 +361,7 @@ private:
 			{
 				if (BottomRightNode == NULL)
 				{
-					_hasChild - true;
+					_hasChild = true;
 					BottomRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _bottomRight);
 				}
 				BottomRightNode->Insert(id, position);

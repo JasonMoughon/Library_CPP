@@ -139,6 +139,9 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameData.h" />
+    <ClInclude Include="GameObject.h" />
+    <ClInclude Include="IMoveable.h" />
     <ClInclude Include="Leet.h" />
     <ClInclude Include="ListNode.h" />
     <ClInclude Include="Point2D.h" />
