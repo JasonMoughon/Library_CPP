@@ -50,6 +50,5 @@ private:
 
 bool operator==(const GameObject& obj1, const GameObject& obj2)
 {
-	if (obj1.GetPosition() == obj2.GetPosition() && obj1.GetVelocity() == obj2.GetVelocity()) return true;
-	return false;
+	return (obj1.ID == obj2.ID);
 }

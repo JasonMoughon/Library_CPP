@@ -57,7 +57,7 @@ public:
 
 	Point2D GetSize()
 	{
-		return Point2D(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y);
+		return Point2D(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y, sf::Color::Transparent);
 	}
 
 	void Insert(T val)
@@ -146,8 +146,9 @@ public:
 		}
 	}
 
-	void Delete(T val)
+	bool Delete(T val)
 	{
+		bool result = false;
 		if (_hasChild)
 		{
 			if (val.GetPosition().X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
@@ -155,13 +156,13 @@ public:
 				//Indicates Quad 1
 				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 				{
-					TopRightNode->Delete(val);
+					if (TopRightNode != NULL) result = TopRightNode->Delete(val);
 					CleanUp();
 				}
 				//Indicates Quad 4
 				else
 				{
-					BottomRightNode->Delete(val);
+					if (BottomRightNode != NULL) result = BottomRightNode->Delete(val);
 					CleanUp();
 				}
 			}
@@ -170,13 +171,13 @@ public:
 				//Indicates Quad 2
 				if (val.GetPosition().Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
 				{
-					TopLeftNode->Delete(val);
+					if (TopLeftNode != NULL) result = TopLeftNode->Delete(val);
 					CleanUp();
 				}
 				//Indicates Quad 3
 				else
 				{
-					BottomLeftNode->Delete(val);
+					if (BottomLeftNode != NULL) result = BottomLeftNode->Delete(val);
 					CleanUp();
 				}
 			}
@@ -189,8 +190,10 @@ public:
 			if (it != _itemList->end()) 
 			{
 				_itemList->erase(it);
+				result = true;
 			}
 		}
+		return result;
 	}
 
 	const std::vector<T>* GetItems(T val)
@@ -200,25 +203,29 @@ public:
 			//Indicates Top Right or Quadrant 1
 			if (val.GetPosition().X > (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y <= (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return TopRightNode->GetItems(val);
+				if (TopRightNode != NULL) return TopRightNode->GetItems(val);
+				else return NULL;
 			}
 
 			//Indicates Top Left or Quadrant 2
 			if (val.GetPosition().X <= (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y < (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return TopLeftNode->GetItems(val);
+				if (TopLeftNode != NULL) return TopLeftNode->GetItems(val);
+				else return NULL;
 			}
 
 			//Indicates Bottom Left or Quadrant 3
 			if (val.GetPosition().X < (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y >= (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return BottomLeftNode->GetItems(val);
+				if (BottomLeftNode != NULL) return BottomLeftNode->GetItems(val);
+				else return NULL;
 			}
 
 			//Indicates Bottom Right or Quadrant 4
 			if (val.GetPosition().X >= (_bottomRight.X - _topLeft.X) / 2 && val.GetPosition().Y > (_bottomRight.Y - _topLeft.Y) / 2)
 			{
-				return BottomRightNode->GetItems(val);
+				if (BottomRightNode != NULL) return BottomRightNode->GetItems(val);
+				else return NULL;
 			}
 		}
 		else
@@ -227,7 +234,7 @@ public:
 		}
 
 		//Return Empty Map if ID is not found
-		return new std::vector<T>();
+		return NULL;
 	}
 
 	void Draw(sf::RenderWindow* w)
