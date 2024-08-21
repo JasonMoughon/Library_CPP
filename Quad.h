@@ -30,7 +30,7 @@ public:
 		_rectangleBounds.setFillColor(sf::Color::Transparent);
 		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
 		_rectangleBounds.setOutlineThickness(OUTLINE_THICKNESS);
-	};
+	}
 
 	Quad(Point2D topLeft, Point2D bottomRight)
 		: _topLeft(topLeft.X, topLeft.Y)
@@ -48,7 +48,7 @@ public:
 		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
 		_rectangleBounds.setOutlineThickness(OUTLINE_THICKNESS);
 		_rectangleBounds.setPosition(sf::Vector2f(_topLeft.X, _topLeft.Y));
-	};
+	}
 
 	~Quad()
 	{
@@ -66,7 +66,7 @@ public:
 		if (!WithinBounds(val.GetPosition())) { return; }
 
 		//Insert into ItemList if ID does not exist in list already
-		if (_itemList->size() < 4 && !_hasChild)
+		if (_itemList->size() < 4 && !_hasChild || _level >= 0x04)
 		{
 			if (std::find(_itemList->begin(), _itemList->end(), val) != _itemList->end()) return;
 			_itemList->insert(_itemList->end(), val);
@@ -97,6 +97,53 @@ public:
 
 			if (BottomRightNode != NULL) result = BottomRightNode->Find(id);
 			if (result.ID != ID_UNDEFINED) return result;
+		}
+		else
+		{
+			for (int i = 0; i < _itemList->size(); i++)
+			{
+				T currentItem = _itemList->at(i);
+				if (currentItem.ID == id) return currentItem;
+			}
+		}
+		return T();
+	}
+
+	T Find(int id, Point2D position)
+	{
+		if (_hasChild)
+		{
+			T result;
+			if (position.X >= _topLeft.X + (_bottomRight.X - _topLeft.X) / 2)
+			{
+				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				{
+					//Quad 1
+					if (TopRightNode != NULL) result = TopRightNode->Find(id, position);
+					if (result.ID != ID_UNDEFINED) return result;
+				}
+				else
+				{
+					//Quad 4
+					if (BottomRightNode != NULL) result = BottomRightNode->Find(id, position);
+					if (result.ID != ID_UNDEFINED) return result;
+				}
+			}
+			else
+			{
+				if (position.Y <= _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2)
+				{
+					//Quad 2
+					if (TopLeftNode != NULL) result = TopLeftNode->Find(id, position);
+					if (result.ID != ID_UNDEFINED) return result;
+				}
+				else
+				{
+					//Quad 3
+					if (BottomLeftNode != NULL) result = BottomLeftNode->Find(id, position);
+					if (result.ID != ID_UNDEFINED) return result;
+				}
+			}
 		}
 		else
 		{
@@ -359,6 +406,26 @@ private:
 	std::vector<T>* _itemList = new std::vector<T>();
 	sf::RectangleShape _rectangleBounds;
 	bool _hasChild = false;
+	byte _level = 0x00;
+
+	Quad(Point2D topLeft, Point2D bottomRight, byte level)
+		: _topLeft(topLeft.X, topLeft.Y)
+		, _bottomRight(bottomRight.X, bottomRight.Y)
+		, _level(level)
+	{
+		if (_topLeft.X > _bottomRight.X || _topLeft.Y > _bottomRight.Y)
+		{
+			throw "INCORRECT COORDINATES";
+			(_topLeft.X, _topLeft.Y) = (float)(0, 0);
+			(_bottomRight.X, _bottomRight.Y) = (float)(0, 0);
+		}
+
+		_rectangleBounds = sf::RectangleShape(sf::Vector2f(_bottomRight.X - _topLeft.X, _bottomRight.Y - _topLeft.Y));
+		_rectangleBounds.setFillColor(sf::Color::Transparent);
+		_rectangleBounds.setOutlineColor(sf::Color::Cyan);
+		_rectangleBounds.setOutlineThickness(OUTLINE_THICKNESS);
+		_rectangleBounds.setPosition(sf::Vector2f(_topLeft.X, _topLeft.Y));
+	}
 
 	std::string StringifyChildren()
 	{
@@ -392,7 +459,7 @@ private:
 				if (TopRightNode == NULL)
 				{
 					_hasChild = true;
-					TopRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y), Point2D(_bottomRight.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2));
+					TopRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y), Point2D(_bottomRight.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _level + 1);
 				}
 				TopRightNode->Insert(val);
 			}
@@ -402,7 +469,7 @@ private:
 				if (BottomRightNode == NULL)
 				{
 					_hasChild = true;
-					BottomRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _bottomRight);
+					BottomRightNode = new Quad(Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _bottomRight, _level + 1);
 				}
 				BottomRightNode->Insert(val);
 			}
@@ -415,7 +482,7 @@ private:
 				if (TopLeftNode == NULL)
 				{
 					_hasChild = true;
-					TopLeftNode = new Quad(_topLeft, Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2));
+					TopLeftNode = new Quad(_topLeft, Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), _level + 1);
 				}
 				TopLeftNode->Insert(val);
 			}
@@ -425,7 +492,7 @@ private:
 				if (BottomLeftNode == NULL)
 				{
 					_hasChild = true;
-					BottomLeftNode = new Quad(Point2D(_topLeft.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _bottomRight.Y));
+					BottomLeftNode = new Quad(Point2D(_topLeft.X, _topLeft.Y + (_bottomRight.Y - _topLeft.Y) / 2), Point2D(_topLeft.X + (_bottomRight.X - _topLeft.X) / 2, _bottomRight.Y), _level + 1);
 				}
 				BottomLeftNode->Insert(val);
 			}
